@@ -58,11 +58,11 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 									
 	
 	// Generator
-    std::default_random_engine gen;
+	std::default_random_engine gen;
 
-    double new_theta;
-    double new_x_mean;
-    double new_y_mean;
+	double new_theta;
+	double new_x_mean;
+	double new_y_mean;
     
 	// Add measurements to each particle and add random Gaussian noise
 	for (int i = 0; i < num_particles; i++) {
@@ -80,7 +80,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 			new_y_mean = particles[i].y + (velocity / yaw_rate) * (cos(particles[i].theta) - cos(new_theta));
 		}
 
-    // Normal distribution for x, y and theta 
+		// Normal distribution for x, y and theta 
 		std::normal_distribution<double> dist_x(new_x_mean, std_pos[0]);
 		std::normal_distribution<double> dist_y(new_y_mean, std_pos[1]);
 		std::normal_distribution<double> dist_theta(new_theta, std_pos[2]);
@@ -96,8 +96,8 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
    
     for (unsigned int i = 0; i < observations.size(); i++) {
     
-	// Set the largest value as start value for minimum distance
-		double min_distance = std::numeric_limits<double>::max();
+		// Set the minimum distance value
+		double min_distance = 1000000000;
     
 		int map_id = 0;
 
@@ -123,7 +123,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const vector<LandmarkObs> &observations, 
                                    const Map &map_landmarks) {
    
-    double std_x = std_landmark[0];
+	double std_x = std_landmark[0];
 	double std_y = std_landmark[1];
 	
 	for (int i = 0; i < num_particles; i++) {
@@ -134,7 +134,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 	
 		vector<LandmarkObs> landmark_pred;
 		
-			// Check landmarks which is in range
+		// Check landmarks which is in range
 		for(unsigned int j = 0; j < map_landmarks.landmark_list.size(); j++) {
 		
 			double x_p = map_landmarks.landmark_list[j].x_f;
@@ -179,7 +179,7 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 				}
 			}
 			
-				// Calculate new weight
+			// Calculate new weight
 			double distance_X = landmark_x - observation_x;
 			double distance_Y = landmark_y - observation_y;
 			double weight = (1 / (2 * M_PI * std_x * std_y)) * exp(-(pow(distance_X, 2) / (2 * pow(std_x, 2)) + (pow(distance_Y, 2) / (2 * pow(std_y, 2)))));
@@ -191,6 +191,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
    
 void ParticleFilter::resample() { 
 
+	/* This  implementation is based on huboqiang's resample implementation:  https://github.com/huboqiang/CarND-Kidnapped-Vehicle-Project/blob/master/src/particle_filter.cpp */
+	
 	std::default_random_engine gen;  
 	vector<Particle> new_particle;
 	vector<double> weights;
@@ -201,18 +203,20 @@ void ParticleFilter::resample() {
 	}
   
 	// Implement resampling wheel 
+	
 	std::discrete_distribution<int> init_index(weights.begin(), weights.end());
+	
 	double max_weight = *max_element(weights.begin(), weights.end());
 	
 	std::uniform_real_distribution<double> weight_dist(0.0, max_weight);
 	
 	int index = init_index(gen);
-	double random_weight = weight_dist(gen);
+	
 	double beta = 0.0;
 
 	for (int i = 0; i < num_particles; i++) {
     
-		beta += random_weight * 2.0;
+		beta += weight_dist(gen) * 2.0;
 	
 		while (weights[index] < beta ) {
 		
